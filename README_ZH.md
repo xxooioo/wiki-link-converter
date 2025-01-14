@@ -4,6 +4,8 @@
 
 一个用于将 Obsidian 的 Wiki 链接转换为自定义格式的插件。
 
+你可以通过将 `main.js` 和 `manifest.json` 文件复制到你的 Obsidian 库文件夹 `VaultFolder/.obsidian/plugins/wiki-link-converter/` 中来安装插件。
+
 ## 功能
 
 - 自动转换：监控指定文件夹中的文件，自动将 Wiki 链接转换为自定义格式
