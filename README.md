@@ -4,6 +4,18 @@
 
 A plugin for converting Obsidian's Wiki-style links to custom format Markdown links.
 
+## Installation
+
+### Manual installation
+You can install it by copying over `main.js` and `manifest.json` to your vault folder `VaultFolder/.obsidian/plugins/wiki-link-converter/`.
+
+### Community Plugins (Not available yet)
+1. Open Obsidian Settings
+2. Go to "Community Plugins"
+3. Disable "Safe Mode"
+4. Click "Browse" and search for "Wiki Link Converter"
+5. Install and enable the plugin
+
 ## Features
 
 - Auto Conversion: Monitor files in specified folders and automatically convert Wiki links to custom format

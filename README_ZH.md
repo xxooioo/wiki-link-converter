@@ -2,6 +2,18 @@
 
 一个用于将 Obsidian 的 Wiki 链接转换为自定义格式 Markdown 链接的插件。
 
+## 安装方法
+
+### 手动安装
+你可以通过将 `main.js` 和 `manifest.json` 文件复制到你的 Obsidian 库文件夹 `VaultFolder/.obsidian/plugins/wiki-link-converter/` 中来安装插件。
+
+### 社区插件（尚未提供）
+1. 打开 Obsidian 设置
+2. 进入 "社区插件" 
+3. 关闭 "安全模式"
+4. 点击 "浏览" 并搜索 "Wiki Link Converter"
+5. 安装并启用插件
+
 ## 功能特点
 
 - 自动转换：监控指定文件夹中的文件，自动将 Wiki 链接转换为自定义格式

@@ -1,62 +1,179 @@
 'use strict';
 
-const obsidian = require('obsidian');
+var obsidian = require('obsidian');
 
 // 默认设置
 const DEFAULT_SETTINGS = {
     autoConvert: true,
     blogFolders: [],  // 默认为空数组
-    linkFormat: '@/blog/{}.md'  // 默认链接格式，{} 将被替换为文件名
+    linkFormat: '@/blog/{}.md',  // 默认链接格式，{} 将被替换为文件名
+    showSuccessNotice: true  // 默认显示成功通知
+};
+
+// 文本国际化
+const TEXTS = {
+    'plugin_name': {
+        en: 'Wiki Link Converter Settings',
+        zh: 'Wiki链接转换器设置'
+    },
+    'link_format': {
+        en: 'Link Format',
+        zh: '链接格式'
+    },
+    'link_format_desc': {
+        en: 'Use {} as filename placeholder',
+        zh: '使用 {} 作为文件名占位符'
+    },
+    'auto_convert': {
+        en: 'Auto Convert',
+        zh: '自动转换'
+    },
+    'auto_convert_desc': {
+        en: 'Automatically convert wiki links while editing',
+        zh: '编辑时自动转换Wiki链接'
+    },
+    'monitor_folders': {
+        en: 'Monitor Folders',
+        zh: '监控文件夹'
+    },
+    'monitor_folders_desc': {
+        en: 'Folders to monitor for auto-conversion (use / for entire vault)',
+        zh: '需要监控的文件夹（使用 / 表示整个仓库）'
+    },
+    'add_folder': {
+        en: 'Add Folder',
+        zh: '添加文件夹'
+    },
+    'delete': {
+        en: 'Delete',
+        zh: '删除'
+    },
+    'convert_command': {
+        en: 'Convert Wiki Links to Custom Format',
+        zh: '转换Wiki链接为自定义格式'
+    },
+    'convert_menu': {
+        en: 'Convert Wiki Links',
+        zh: '转换Wiki链接'
+    },
+    'convert_success': {
+        en: 'Wiki links converted successfully',
+        zh: 'Wiki链接转换成功'
+    },
+    'convert_file_success': {
+        en: 'Converted links in {}',
+        zh: '已转换 {} 中的链接'
+    },
+    'convert_error': {
+        en: 'Error converting {}',
+        zh: '转换 {} 时出错'
+    },
+    'format_error': {
+        en: 'Must include {} as filename placeholder',
+        zh: '必须包含 {} 作为文件名占位符'
+    },
+    'show_notice': {
+        en: 'Show Success Notice',
+        zh: '显示成功通知'
+    },
+    'show_notice_desc': {
+        en: 'Show notification when links are converted successfully',
+        zh: '链接转换成功时显示通知'
+    }
 };
 
 class WikiLinkConverterPlugin extends obsidian.Plugin {
     settings;
+    isZhLanguage = false;
+
+    // 获取国际化文本
+    getText(key, ...args) {
+        const text = TEXTS[key][this.isZhLanguage ? 'zh' : 'en'];
+        return args.length ? text.replace(/\{\}/g, () => args.shift()) : text;
+    }
 
     async onload() {
-        console.log('加载 Wiki Link Converter 插件');
         await this.loadSettings();
-
+        
+        // 检测语言
+        this.isZhLanguage = document.documentElement.lang === 'zh';
+        
         // 添加设置选项卡
         this.addSettingTab(new WikiLinkConverterSettingTab(this.app, this));
 
-        // 监听文件修改事件
-        this.registerEvent(
-            this.app.vault.on('modify', async (file) => {
-                if (this.settings.autoConvert && this.isInBlogFolders(file)) {
-                    await this.convertLinksInFile(file);
-                }
-            })
-        );
-
-        // 监听文件创建事件
-        this.registerEvent(
-            this.app.vault.on('create', async (file) => {
-                if (this.settings.autoConvert && this.isInBlogFolders(file)) {
-                    await this.convertLinksInFile(file);
-                }
-            })
-        );
-
-        // 添加命令到命令面板
+        // 添加命令
         this.addCommand({
             id: 'convert-wiki-links',
-            name: '转换Wiki链接为自定义格式',
-            callback: () => this.convertCurrentFile()
+            name: this.getText('convert_command'),
+            editorCallback: (editor, view) => {
+                this.convertWikiLinks(editor);
+            }
         });
 
-        // 添加右键菜单项
+        // 注册自动转换事件处理器
+        this.registerAutoConvert();
+
+        // 添加右键菜单
         this.registerEvent(
             this.app.workspace.on('file-menu', (menu, file) => {
-                menu.addItem((item) => {
-                    item
-                        .setTitle('转换Wiki链接')
-                        .setIcon('link')
-                        .onClick(async () => {
-                            await this.convertLinksInFile(file);
-                        });
-                });
+                // 只对 markdown 文件显示菜单
+                if (file && file.extension === 'md') {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(this.getText('convert_menu'))
+                            .setIcon('link')
+                            .onClick(async () => {
+                                await this.convertLinksInFile(file);
+                            });
+                    });
+                }
             })
         );
+    }
+
+    // 统一的链接转换逻辑
+    convertWikiLinksInText(text) {
+        return text.replace(/\[\[(.*?)\]\]/g, (match, fileName) => {
+            // 如果链接内容为空，保持原样
+            if (!fileName.trim()) {
+                return match;
+            }
+            
+            // 使用自定义格式转换链接
+            const link = this.settings.linkFormat.replace('{}', fileName);
+            return `[${fileName}](${link})`;
+        });
+    }
+
+    // 编辑器中的转换
+    convertWikiLinks(editor) {
+        const content = editor.getValue();
+        const newContent = this.convertWikiLinksInText(content);
+
+        if (content !== newContent) {
+            editor.setValue(newContent);
+            this.showNotice('convert_success');
+        }
+    }
+
+    handleEditorChange(editor) {
+        // 获取当前编辑的文件
+        const file = this.app.workspace.getActiveFile();
+        
+        // 快速检查：如果不是markdown文件直接返回
+        if (!file?.extension === 'md') return;
+
+        // 获取当前光标位置和行内容
+        const cursor = editor.getCursor();
+        const line = editor.getLine(cursor.line);
+        
+        // 只在输入 ]] 时继续处理
+        if (!line.endsWith(']]')) return;
+        
+        // 检查文件是否在监控的文件夹中（较耗时的操作放在最后）
+        if (!this.isInBlogFolders(file)) return;
+        
+        this.convertWikiLinks(editor);
     }
 
     onunload() {
@@ -77,61 +194,54 @@ class WikiLinkConverterPlugin extends obsidian.Plugin {
 
     // 检查文件是否在文件夹中
     isInBlogFolders(file) {
-        if (!file || file.extension !== 'md') return false;
-        
         // 如果包含根目录"/"，则处理所有markdown文件
         if (this.settings.blogFolders.includes('/')) return true;
         
         // 检查文件是否在任一指定文件夹中
+        const filePath = file.path;
         return this.settings.blogFolders.some(folder => 
-            file.path.startsWith(folder + '/') || file.path === folder
+            filePath.startsWith(folder + '/') || filePath === folder
         );
     }
 
-    // 转换当前打开的文件
-    async convertCurrentFile() {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile) {
-            await this.convertLinksInFile(activeFile);
-        } else {
-            new obsidian.Notice('没有打开的文件');
+    // 文件中的转换
+    async convertLinksInFile(file) {
+        try {
+            const content = await this.app.vault.read(file);
+            const newContent = this.convertWikiLinksInText(content);
+
+            if (content !== newContent) {
+                await this.app.vault.modify(file, newContent);
+                this.showNotice('convert_file_success', file.basename);
+            }
+        } catch (error) {
+            console.error('转换链接时出错:', error);
+            this.showNotice('convert_error', file.basename);
         }
     }
 
-    async convertLinksInFile(file) {
-        try {
-            // 读取文件内容
-            const content = await this.app.vault.read(file);
-            
-            // 转换wiki链接
-            const newContent = content.replace(
-                /\[\[(.*?)\]\]/g,
-                (match, fileName) => {
-                    // 如果链接内容为空，保持原样
-                    if (!fileName.trim()) {
-                        return match;
-                    }
-                    
-                    // 移除文件扩展名（如果有）和管道符后的显示文本（如果有）
-                    fileName = fileName.split('|')[0].replace(/\.md$/, '');
-                    // 使用自定义格式转换链接
-                    const link = this.settings.linkFormat.replace('{}', fileName);
-                    return `[${fileName}](${link})`;
-                }
-            );
-
-            // 如果内容有变化，保存文件
-            if (content !== newContent) {
-                await this.app.vault.modify(file, newContent);
-                new obsidian.Notice(`已转换 ${file.basename} 中的链接`);
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('转换链接时出错:', error);
-            new obsidian.Notice(`转换 ${file.basename} 时出错`);
-            return false;
+    // 注册自动转换事件处理器
+    registerAutoConvert() {
+        // 如果已经注册过，先移除旧的
+        if (this.autoConvertHandler) {
+            this.app.workspace.off('editor-change', this.autoConvertHandler);
+            this.autoConvertHandler = null;
         }
+
+        // 如果启用了自动转换，注册新的处理器
+        if (this.settings.autoConvert) {
+            this.autoConvertHandler = (editor) => this.handleEditorChange(editor);
+            this.registerEvent(
+                this.app.workspace.on('editor-change', this.autoConvertHandler)
+            );
+        }
+    }
+
+    // 修改通知方法
+    showNotice(key, ...args) {
+        // 只有convert_success受开关控制
+        if (key === 'convert_success' && !this.settings.showSuccessNotice) return;
+        new obsidian.Notice(this.getText(key, ...args));
     }
 }
 
@@ -143,46 +253,30 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
         this.plugin = plugin;
     }
 
-    // 获取所有文件夹
-    getAllFolders() {
-        const folders = new Set(['/']); // 添加根目录选项
-        this.app.vault.getAllLoadedFiles().forEach(file => {
-            if (file.parent) {
-                folders.add(file.parent.path);
-            }
-        });
-        return Array.from(folders).sort();
-    }
-
     display() {
         let {containerEl} = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'Wiki Link Converter 设置'});
+        containerEl.createEl('h2', {text: this.plugin.isZhLanguage ? 'Wiki链接转换器设置' : 'Wiki Link Converter Settings'});
 
         // 链接格式设置
-        const linkFormatSetting = new obsidian.Setting(containerEl)
-            .setName('链接格式')
-            .setDesc('设置转换后的链接格式。例如：@/blog/{}.md 会生成 [文件名](@/blog/文件名.md)')
+        new obsidian.Setting(containerEl)
+            .setName(this.plugin.isZhLanguage ? '链接格式' : 'Link Format')
+            .setDesc(this.plugin.isZhLanguage ? '使用 {} 作为文件名占位符' : 'Use {} as filename placeholder')
             .addText(text => {
                 const settingControl = text.inputEl.parentElement;
-                settingControl.style.flexDirection = 'column';
-                settingControl.style.alignItems = 'flex-start';
-                settingControl.addClass('dropdown-container');
-                settingControl.style.marginLeft = '-14px';  // 向左移动以对齐
-
+                settingControl.style.position = 'relative';  // 添加相对定位
+                
                 text.setPlaceholder('@/blog/{}.md')
                     .setValue(this.plugin.settings.linkFormat);
                 text.inputEl.style.width = '200px';
 
                 // 创建错误信息元素
-                const errorMessage = settingControl.createDiv('format-error');
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'format-error';
                 errorMessage.style.display = 'none';
-                errorMessage.style.color = 'var(--text-error)';
-                errorMessage.style.fontSize = '12px';
-                errorMessage.style.marginTop = '4px';
-                errorMessage.style.marginLeft = '4px';
-                errorMessage.setText('必须包含 {} 作为文件名占位符');
+                errorMessage.textContent = this.plugin.getText('format_error');
+                settingControl.appendChild(errorMessage);
 
                 // 添加失焦事件监听
                 text.inputEl.addEventListener('blur', async () => {
@@ -202,135 +296,152 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
                 });
             });
 
+        // 显示成功通知设置
+        new obsidian.Setting(containerEl)
+            .setName(this.plugin.getText('show_notice'))
+            .setDesc(this.plugin.getText('show_notice_desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showSuccessNotice)
+                .onChange(async (value) => {
+                    this.plugin.settings.showSuccessNotice = value;
+                    await this.plugin.saveSettings();
+                }));
+
         // 自动转换设置
         new obsidian.Setting(containerEl)
-            .setName('自动转换')
-            .setDesc('自动转换指定文件夹中的Wiki链接')
+            .setName(this.plugin.isZhLanguage ? '自动转换' : 'Auto Convert')
+            .setDesc(this.plugin.isZhLanguage ? '编辑时自动转换Wiki链接' : 'Automatically convert wiki links while editing')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoConvert)
                 .onChange(async (value) => {
                     this.plugin.settings.autoConvert = value;
                     await this.plugin.saveSettings();
+                    // 重新注册事件处理器
+                    this.plugin.registerAutoConvert();
                 }));
 
         // 文件夹设置
         const blogFolderSetting = new obsidian.Setting(containerEl)
-            .setName('文件夹')
-            .setDesc('需要自动转换的文件夹路径（使用 "/" 表示整个仓库，可添加多个文件夹）')
+            .setName(this.plugin.isZhLanguage ? '监控文件夹' : 'Monitor Folders')
+            .setDesc(this.plugin.isZhLanguage ? '需要监控的文件夹（使用 / 表示整个仓库）' : 'Folders to monitor for auto-conversion (use / for entire vault)')
             .addButton(button => button
-                .setButtonText('添加文件夹')
+                .setButtonText(this.plugin.isZhLanguage ? '添加文件夹' : 'Add Folder')
                 .onClick(async () => {
+                    if (!this.plugin.settings.blogFolders) {
+                        this.plugin.settings.blogFolders = [];
+                    }
                     this.plugin.settings.blogFolders.push('');
                     await this.plugin.saveSettings();
                     this.display();
                 }));
 
-        // 文件夹列表
+        // 文件夹列表容器
         const folderListContainer = containerEl.createDiv('setting-item-children');
+        folderListContainer.style.paddingLeft = '40px';
+
+        // 获取所有文件夹
         const folders = this.getAllFolders();
 
-        this.plugin.settings.blogFolders.forEach((folder, index) => {
-            const setting = new obsidian.Setting(folderListContainer)
-                .setClass('setting-item');
+        // 显示现有的文件夹
+        if (this.plugin.settings.blogFolders && this.plugin.settings.blogFolders.length > 0) {
+            this.plugin.settings.blogFolders.forEach((folder, index) => {
+                const folderSetting = new obsidian.Setting(folderListContainer)
+                    .addText(text => text
+                        .setPlaceholder('/')
+                        .setValue(folder)
+                        .onChange(async (value) => {
+                            this.plugin.settings.blogFolders[index] = value;
+                            await this.plugin.saveSettings();
+                        }))
+                    .addButton(button => button
+                        .setIcon('trash')
+                        .setTooltip(this.plugin.isZhLanguage ? '删除' : 'Delete')
+                        .onClick(async () => {
+                            this.plugin.settings.blogFolders.splice(index, 1);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        }));
 
-            // 创建下拉菜单容器
-            const dropdownContainer = setting.controlEl.createDiv('dropdown-container');
-            
-            // 添加文本输入框
-            const textInput = new obsidian.TextComponent(dropdownContainer)
-                .setPlaceholder('例如: 文件夹 或 /')
-                .setValue(folder);
+                // 添加文件夹自动补全
+                const textInput = folderSetting.components[0];
+                const inputEl = textInput.inputEl;
+                const inputContainer = inputEl.parentElement;
+                
+                // 创建一个新的容器来包裹输入框和下拉菜单
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.position = 'relative';
+                inputEl.parentElement.appendChild(wrapperDiv);
+                wrapperDiv.appendChild(inputEl);
+                
+                // 创建下拉菜单容器
+                const dropdown = wrapperDiv.createDiv('suggestion-dropdown');
+                dropdown.style.display = 'none';
 
-            // 添加下拉建议列表
-            const dropdown = dropdownContainer.createDiv('suggestion-dropdown');
-            dropdown.style.display = 'none';
+                // 显示建议
+                const showSuggestions = () => {
+                    const value = inputEl.value.toLowerCase();
+                    // 根据输入内容过滤文件夹
+                    const matches = value === '' ? 
+                        folders : // 如果输入为空，显示所有文件夹
+                        folders.filter(f => f.toLowerCase().includes(value)); // 否则只显示匹配的文件夹
 
-            const showSuggestions = () => {
-                const value = textInput.getValue().toLowerCase();
-                const matches = folders.filter(f => 
-                    f.toLowerCase().includes(value)
-                );
-
-                if (matches.length > 0) {
-                    dropdown.empty();
-                    dropdown.style.display = 'block';
-                    matches.forEach(match => {
-                        const item = dropdown.createDiv('suggestion-item');
-                        item.setText(match);
-                        item.onClickEvent(() => {
-                            textInput.setValue(match);
-                            dropdown.style.display = 'none';
-                            this.plugin.settings.blogFolders[index] = match;
-                            this.plugin.saveSettings();
+                    if (matches.length > 0) {
+                        dropdown.empty();
+                        dropdown.style.display = 'block';
+                        matches.forEach(match => {
+                            const item = dropdown.createDiv('suggestion-item');
+                            item.setText(match);
+                            item.onClickEvent(() => {
+                                textInput.setValue(match);
+                                dropdown.style.display = 'none';
+                                this.plugin.settings.blogFolders[index] = match;
+                                this.plugin.saveSettings();
+                            });
                         });
-                    });
-                } else {
-                    dropdown.style.display = 'none';
-                }
-            };
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                };
 
-            // 处理输入事件
-            textInput.inputEl.addEventListener('input', () => {
-                showSuggestions();
+                // 输入事件
+                inputEl.addEventListener('input', showSuggestions);
+                
+                // 获得焦点时立即显示所有文件夹
+                inputEl.addEventListener('focus', () => {
+                    showSuggestions();
+                });
+
+                // 失去焦点时延迟隐藏下拉菜单
+                inputEl.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        dropdown.style.display = 'none';
+                    }, 200);
+                });
             });
-
-            // 处理焦点事件
-            textInput.inputEl.addEventListener('focus', () => {
-                showSuggestions();
-            });
-
-            // 处理值变更事件
-            textInput.onChange(async (value) => {
-                this.plugin.settings.blogFolders[index] = value;
-                await this.plugin.saveSettings();
-            });
-
-            // 处理失焦事件
-            textInput.inputEl.addEventListener('blur', () => {
-                // 延迟隐藏下拉菜单，以允许点击建议项
-                setTimeout(() => {
-                    dropdown.style.display = 'none';
-                }, 200);
-            });
-
-            // 添加删除按钮
-            setting.addButton(button => button
-                .setIcon('trash')
-                .setTooltip('删除')
-                .onClick(async () => {
-                    this.plugin.settings.blogFolders.splice(index, 1);
-                    await this.plugin.saveSettings();
-                    this.display();
-                }));
-        });
+        }
 
         // 添加样式
         const style = containerEl.createEl('style');
         style.textContent = `
-            .dropdown-container {
-                position: relative;
-                margin-right: 8px;
+            .setting-item-children {
+                margin-top: 8px;
             }
-            .setting-item .dropdown-container {
-                width: 200px;
-            }
-            .setting-item .dropdown-container input {
-                box-sizing: border-box;
-                width: 100%;
+            .setting-item-children .setting-item {
+                border: none;
+                padding-top: 8px;
             }
             .suggestion-dropdown {
                 position: absolute;
-                top: 100%;
+                top: 32px;
                 left: 0;
-                box-sizing: border-box;
-                width: 100%;
+                width: 200px;
+                max-height: 200px;
+                overflow-y: auto;
                 background-color: var(--background-primary);
                 border: 1px solid var(--background-modifier-border);
                 border-radius: 4px;
                 box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
-                z-index: 100;
-                max-height: 200px;
-                overflow-y: auto;
+                z-index: 1000;
             }
             .suggestion-item {
                 padding: 6px 8px;
@@ -343,11 +454,30 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
             .suggestion-item:hover {
                 background-color: var(--background-modifier-hover);
             }
-            .setting-item-children .setting-item {
-                border-top: none;
-                padding-top: 0;
+            .setting-item input[type='text'] {
+                width: 200px;
+            }
+            .format-error {
+                position: absolute;
+                top: 55%;
+                right: calc(50% + 10px);
+                transform: translateY(-50%);
+                color: var(--text-error);
+                font-size: 12px;
+                white-space: nowrap;
+                z-index: 1;
             }
         `;
+    }
+
+    getAllFolders() {
+        const folders = new Set(['/']); // 添加根目录选项
+        this.app.vault.getAllLoadedFiles().forEach(file => {
+            if (file.parent) {
+                folders.add(file.parent.path);
+            }
+        });
+        return Array.from(folders).sort();
     }
 }
 
