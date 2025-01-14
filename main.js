@@ -21,24 +21,24 @@ const TEXTS = {
         zh: '链接格式'
     },
     'link_format_desc': {
-        en: 'Use {} as filename placeholder',
-        zh: '使用 {} 作为文件名占位符'
+        en: 'Set the format of the converted link. e.g. @/blog/{}.md will generate [filename](@/blog/filename.md)',
+        zh: '设置转换后的链接格式。例如：@/blog/{}.md 会生成 [文件名](@/blog/文件名.md)'
     },
     'auto_convert': {
         en: 'Auto Convert',
         zh: '自动转换'
     },
     'auto_convert_desc': {
-        en: 'Automatically convert wiki links while editing',
-        zh: '编辑时自动转换Wiki链接'
+        en: 'Automatically converts Wiki links in the monitor folder when editing.',
+        zh: '编辑时自动转换监控文件夹中的Wiki链接。'
     },
     'monitor_folders': {
         en: 'Monitor Folders',
         zh: '监控文件夹'
     },
     'monitor_folders_desc': {
-        en: 'Folders to monitor for auto-conversion (use / for entire vault)',
-        zh: '需要监控的文件夹（使用 / 表示整个仓库）'
+        en: 'Folders to monitor for auto-conversion. (use / for entire vault, you can add multiple folders)',
+        zh: '需要被监控的文件夹。（使用 / 表示整个仓库，可添加多个文件夹）'
     },
     'add_folder': {
         en: 'Add Folder',
@@ -77,8 +77,8 @@ const TEXTS = {
         zh: '显示成功通知'
     },
     'show_notice_desc': {
-        en: 'Show notification when links are converted successfully',
-        zh: '链接转换成功时显示通知'
+        en: 'Show notification when links are converted successfully.',
+        zh: '链接转换成功时显示通知。'
     }
 };
 
@@ -257,12 +257,12 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
         let {containerEl} = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: this.plugin.isZhLanguage ? 'Wiki链接转换器设置' : 'Wiki Link Converter Settings'});
+        containerEl.createEl('h2', {text: this.plugin.getText('plugin_name')});
 
         // 链接格式设置
         new obsidian.Setting(containerEl)
-            .setName(this.plugin.isZhLanguage ? '链接格式' : 'Link Format')
-            .setDesc(this.plugin.isZhLanguage ? '使用 {} 作为文件名占位符' : 'Use {} as filename placeholder')
+            .setName(this.plugin.getText('link_format'))
+            .setDesc(this.plugin.getText('link_format_desc'))
             .addText(text => {
                 const settingControl = text.inputEl.parentElement;
                 settingControl.style.position = 'relative';  // 添加相对定位
@@ -309,8 +309,8 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
 
         // 自动转换设置
         new obsidian.Setting(containerEl)
-            .setName(this.plugin.isZhLanguage ? '自动转换' : 'Auto Convert')
-            .setDesc(this.plugin.isZhLanguage ? '编辑时自动转换Wiki链接' : 'Automatically convert wiki links while editing')
+            .setName(this.plugin.getText('auto_convert'))
+            .setDesc(this.plugin.getText('auto_convert_desc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoConvert)
                 .onChange(async (value) => {
@@ -322,10 +322,10 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
 
         // 文件夹设置
         const blogFolderSetting = new obsidian.Setting(containerEl)
-            .setName(this.plugin.isZhLanguage ? '监控文件夹' : 'Monitor Folders')
-            .setDesc(this.plugin.isZhLanguage ? '需要监控的文件夹（使用 / 表示整个仓库）' : 'Folders to monitor for auto-conversion (use / for entire vault)')
+            .setName(this.plugin.getText('monitor_folders'))
+            .setDesc(this.plugin.getText('monitor_folders_desc'))
             .addButton(button => button
-                .setButtonText(this.plugin.isZhLanguage ? '添加文件夹' : 'Add Folder')
+                .setButtonText(this.plugin.getText('add_folder'))
                 .onClick(async () => {
                     if (!this.plugin.settings.blogFolders) {
                         this.plugin.settings.blogFolders = [];
@@ -355,7 +355,7 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
                         }))
                     .addButton(button => button
                         .setIcon('trash')
-                        .setTooltip(this.plugin.isZhLanguage ? '删除' : 'Delete')
+                        .setTooltip(this.plugin.getText('delete'))
                         .onClick(async () => {
                             this.plugin.settings.blogFolders.splice(index, 1);
                             await this.plugin.saveSettings();
@@ -459,8 +459,8 @@ class WikiLinkConverterSettingTab extends obsidian.PluginSettingTab {
             }
             .format-error {
                 position: absolute;
-                top: 55%;
-                right: calc(50% + 10px);
+                top: 30%;
+                right: 220px;
                 transform: translateY(-50%);
                 color: var(--text-error);
                 font-size: 12px;

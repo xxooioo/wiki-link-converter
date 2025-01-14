@@ -3,7 +3,7 @@
   "name": "Wiki Link Converter",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "Convert Obsidian's Wiki links to custom format Markdown links",
+  "description": "Convert Obsidian's Wiki links to custom format Markdown links. Support auto-conversion and folder monitoring.",
   "author": "xxooioo",
   "authorUrl": "https://github.com/xxooioo",
   "isDesktopOnly": false,

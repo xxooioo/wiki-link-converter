@@ -4,85 +4,44 @@
 
 A plugin for converting Obsidian's Wiki-style links to custom format Markdown links.
 
-## Installation
-
-### Manual installation
-You can install it by copying over `main.js` and `manifest.json` to your vault folder `VaultFolder/.obsidian/plugins/wiki-link-converter/`.
-
-### Community Plugins (Not available yet)
-1. Open Obsidian Settings
-2. Go to "Community Plugins"
-3. Disable "Safe Mode"
-4. Click "Browse" and search for "Wiki Link Converter"
-5. Install and enable the plugin
-
 ## Features
 
 - Auto Conversion: Monitor files in specified folders and automatically convert Wiki links to custom format
 - Manual Conversion: Support converting single file through command palette or context menu
 - Custom Format: Customize the target link format
 - Folder Selection: Support selecting multiple folders for monitoring
-- Live Preview: Auto-completion support for folder selection
 
 ## Usage
 
-### Configuration
+1. **Automatic Conversion**
+   - Enable "Auto Convert" in settings
+   - Set folders to monitor (use `/` for entire vault)
+   - Wiki links will be automatically converted while editing
 
-You can configure the following settings:
+2. **Manual Conversion**
+   - Using Command Palette: Search for "Convert Wiki Links to Custom Format" (you can also set custom hotkey)
+   - Using Context Menu: Right-click on file and select "Convert Wiki Links"
 
-1. Link Format
+## Settings
+
+1. **Link Format**
    - Set the format for converted links
    - Use `{}` as filename placeholder
-   - Example: `@/blog/{}.md` will convert `[[filename]]` to `[filename](@/blog/filename.md)`
+   - Example: `@/blog/{}.md` will generate `[filename](@/blog/filename.md)` (this format is suitable for zola blog internal links)
 
-2. Auto Conversion
-   - Enable/disable automatic conversion
-   - When enabled, it will monitor file changes in specified folders
+2. **Show Success Notice**
+   - Control whether to show success notification in editor
+   - Context menu conversion notifications are not affected by this setting
 
-3. Folder Settings
-   - Add folders to monitor
-   - Use `/` to represent the entire vault
+3. **Auto Convert**
+   - When enabled, automatically converts Wiki links while editing
+   - Only works for files in monitored folders
+
+4. **Monitor Folders**
+   - Set folders for auto-conversion
    - Support multiple folders
-   - Auto-completion for folder paths
-
-### How to Use
-
-1. Automatic Conversion
-   - Enable auto conversion in settings
-   - Add folders to monitor
-   - Wiki links will be converted automatically while editing
-
-2. Manual Conversion
-   - Method 1: Using Command Palette (Ctrl/Cmd + P)
-     - Search for "Convert Wiki Links to Custom Format"
-     - Click to execute
-   - Method 2: Using Context Menu
-     - Right-click on file
-     - Select "Convert Wiki Links"
-
-## Examples
-
-1. Basic Conversion
-   ```
-   [[filename]] -> [filename](@/blog/filename.md)
-   ```
-
-2. Custom Format Examples
-   - `content/posts/{}/index.md` -> `[filename](content/posts/filename/index.md)`
-   - `docs/{}` -> `[filename](docs/filename)`
-   - `assets/{}.html` -> `[filename](assets/filename.html)`
-
-## Notes
-
-1. Link format must include `{}` as filename placeholder
-2. Using `/` as folder path will process files in the entire vault
-3. Auto conversion only processes files in specified folders
-4. Manual conversion works for files in any location
+   - Use `/` to monitor entire vault
 
 ## License
 
 MIT License
-
-## Author
-
-[xxooioo](https://github.com/xxooioo)
