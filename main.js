@@ -151,7 +151,21 @@ class WikiLinkConverterPlugin extends obsidian.Plugin {
         const newContent = this.convertWikiLinksInText(content);
 
         if (content !== newContent) {
+            // 保存当前光标位置
+            const cursor = editor.getCursor();
+            
+            // 计算光标位置的偏移量
+            const beforeCursor = content.slice(0, editor.posToOffset(cursor));
+            const afterConversion = this.convertWikiLinksInText(beforeCursor);
+            const offset = afterConversion.length - beforeCursor.length;
+            
+            // 更新内容
             editor.setValue(newContent);
+            
+            // 恢复光标位置，考虑转换后的偏移
+            const newPos = editor.offsetToPos(editor.posToOffset(cursor) + offset);
+            editor.setCursor(newPos);
+            
             this.showNotice('convert_success');
         }
     }
@@ -161,18 +175,19 @@ class WikiLinkConverterPlugin extends obsidian.Plugin {
         const file = this.app.workspace.getActiveFile();
         
         // 快速检查：如果不是markdown文件直接返回
-        if (!file?.extension === 'md') return;
+        if (file?.extension !== 'md') return;
+
+        // 检查文件是否在监控的文件夹中
+        if (!this.isInBlogFolders(file)) return;
 
         // 获取当前光标位置和行内容
         const cursor = editor.getCursor();
         const line = editor.getLine(cursor.line);
         
-        // 只在输入 ]] 时继续处理
-        if (!line.endsWith(']]')) return;
-        
-        // 检查文件是否在监控的文件夹中（较耗时的操作放在最后）
-        if (!this.isInBlogFolders(file)) return;
-        
+        // 检查当前行是否包含完整的Wiki链接
+        const wikiLinkRegex = /\[\[.*?\]\]/;
+        if (!wikiLinkRegex.test(line)) return;
+
         this.convertWikiLinks(editor);
     }
 
