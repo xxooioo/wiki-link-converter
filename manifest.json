@@ -1,7 +1,7 @@
 {
   "id": "wiki-link-converter",
   "name": "Wiki Link Converter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "0.15.0",
   "description": "Convert Obsidian's Wiki links to custom format Markdown links. Support auto-conversion and folder monitoring.",
   "author": "xxooioo",
