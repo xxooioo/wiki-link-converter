@@ -133,15 +133,39 @@ class WikiLinkConverterPlugin extends obsidian.Plugin {
 
     // 统一的链接转换逻辑
     convertWikiLinksInText(text) {
-        return text.replace(/\[\[(.*?)\]\]/g, (match, fileName) => {
+        return text.replace(/\[\[(.*?)\]\]/g, (match, content) => {
             // 如果链接内容为空，保持原样
-            if (!fileName.trim()) {
+            if (!content.trim()) {
                 return match;
             }
             
-            // 使用自定义格式转换链接
+            // 分离文件路径和显示文本（处理 [[filepath|display text]] 格式）
+            let filePath = content;
+            let displayText = content;
+            
+            if (content.includes('|')) {
+                const parts = content.split('|');
+                filePath = parts[0].trim();
+                displayText = parts[1].trim();
+            }
+            
+            // 提取文件名（去除路径部分）
+            let fileName = filePath;
+            if (filePath.includes('/')) {
+                const pathParts = filePath.split('/');
+                fileName = pathParts[pathParts.length - 1];
+            }
+            
+            // 去除文件扩展名（如果存在）
+            fileName = fileName.replace(/\.md$/, '');
+            
+            // 使用自定义格式生成链接
             const link = this.settings.linkFormat.replace('{}', fileName);
-            return `[${fileName}](${link})`;
+            
+            // 如果原本有自定义显示文本，使用显示文本；否则使用文件名
+            const finalDisplayText = (content.includes('|')) ? displayText : fileName;
+            
+            return `[${finalDisplayText}](${link})`;
         });
     }
 
